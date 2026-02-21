@@ -1,0 +1,23 @@
+# GreenDispatch — Python dependencies
+# Install with: pip install -r requirements.txt
+
+# ── Web dashboard ──────────────────────────────────────────────────────────────
+streamlit==1.54.0
+plotly==6.5.2
+pydeck==0.9.1
+
+# ── Data ──────────────────────────────────────────────────────────────────────
+pandas==2.3.3
+numpy==2.4.2
+PyYAML==6.0.3
+
+# ── RL / simulation backend (SustainCluster) ──────────────────────────────────
+torch==2.10.0
+gymnasium==1.2.3
+matplotlib==3.10.8
+seaborn==0.13.2
+tqdm==4.67.3
+cloudpickle==3.1.2
+
+# ── Live carbon API ────────────────────────────────────────────────────────────
+requests==2.32.5

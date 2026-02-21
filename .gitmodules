@@ -1,0 +1,3 @@
+[submodule "sustain-cluster"]
+	path = sustain-cluster
+	url = https://github.com/HewlettPackard/sustain-cluster.git
