@@ -1,0 +1,144 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap');
+@import 'maplibre-gl/dist/maplibre-gl.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base reset ───────────────────────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body, #root {
+    height: 100%;
+    overflow: hidden;
+    background: #0a0c10;
+    color: #e2e8f0;
+    font-family: Inter, system-ui, sans-serif;
+  }
+  body {
+    position: relative;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 60% 50% at 15% 50%, rgba(0,255,160,0.035) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 40% at 85% 15%, rgba(0,212,255,0.030) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 60% at 70% 80%, rgba(0,255,160,0.020) 0%, transparent 70%);
+    z-index: 0;
+  }
+  #root { position: relative; z-index: 1; }
+
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,255,160,0.2); border-radius: 2px; }
+}
+
+/* ── Utility classes ──────────────────────────────────────────────────── */
+@layer utilities {
+  .glass-card {
+    background: rgba(17, 19, 24, 0.72);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(0, 255, 160, 0.12);
+    border-radius: 12px;
+  }
+
+  .neon-card {
+    background: rgba(17, 19, 24, 0.80);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(0, 255, 160, 0.22);
+    border-radius: 12px;
+    box-shadow: 0 0 24px rgba(0, 255, 160, 0.10), inset 0 0 24px rgba(0, 0, 0, 0.40);
+  }
+
+  .glow-green {
+    color: #00FFA0;
+    text-shadow: 0 0 10px rgba(0, 255, 160, 0.65), 0 0 30px rgba(0, 255, 160, 0.30);
+  }
+  .glow-teal {
+    color: #00D4FF;
+    text-shadow: 0 0 10px rgba(0, 212, 255, 0.65), 0 0 30px rgba(0, 212, 255, 0.30);
+  }
+  .glow-orange {
+    color: #FF8C42;
+    text-shadow: 0 0 10px rgba(255, 140, 66, 0.65);
+  }
+  .glow-red {
+    color: #FF4757;
+    text-shadow: 0 0 10px rgba(255, 71, 87, 0.65);
+  }
+
+  .micro-label {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.60rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(107, 114, 128, 0.9);
+  }
+
+  .btn-cyber {
+    background: rgba(0, 255, 160, 0.12);
+    border: 1px solid rgba(0, 255, 160, 0.35);
+    color: #00FFA0;
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .btn-cyber:hover {
+    background: rgba(0, 255, 160, 0.22);
+    box-shadow: 0 0 12px rgba(0, 255, 160, 0.25);
+  }
+  .btn-cyber.active {
+    background: rgba(0, 255, 160, 0.28);
+    box-shadow: 0 0 16px rgba(0, 255, 160, 0.35);
+  }
+  .btn-cyber-dim {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.10);
+    color: rgba(255,255,255,0.45);
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .btn-cyber-dim:hover {
+    border-color: rgba(0, 255, 160, 0.3);
+    color: rgba(0, 255, 160, 0.7);
+  }
+
+  .cyber-divider {
+    border: none;
+    border-top: 1px solid rgba(0, 255, 160, 0.10);
+  }
+
+  .pulse-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #00FFA0;
+    box-shadow: 0 0 6px rgba(0,255,160,0.8);
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(0,255,160,0.8); }
+    50% { opacity: 0.5; box-shadow: 0 0 2px rgba(0,255,160,0.4); }
+  }
+  @keyframes pulse-ring {
+    0%   { transform: translate(-50%, -50%) scale(0.6); opacity: 0.8; }
+    100% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
+  }
+
+  .live-num {
+    font-family: 'Roboto Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    transition: color 0.3s ease;
+  }
+}

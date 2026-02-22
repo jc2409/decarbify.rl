@@ -1,2 +1,142 @@
+# Python virtual environments
 venv/
-.ipynb_checkpoints
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb
+.jupyter/
+
+# PyCharm IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# VS Code
+.vscode/
+*.code-workspace
+.history/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# OS-specific
+.DS_Store
+Thumbs.db
+desktop.ini
+.Spotlight-V100/
+.Trashes/
+ehthumbs.db
+$RECYCLE.BIN/
+
+# Frontend - Node dependencies and build outputs
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.next/
+frontend/out/
+
+# Frontend - pnpm
+frontend/pnpm-lock.yaml
+frontend/.pnpm-store/
+
+# Frontend - npm/yarn
+frontend/package-lock.json
+frontend/yarn.lock
+
+# Frontend - env files
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# LLM outputs and temporary files
+llm_stuff/outputs/
+llm_stuff/*.pkl
+llm_stuff/*.json
+llm_stuff/temp/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# Streamlit cache
+.streamlit/
+.streamlit_cache/
+
+# FastAPI/Uvicorn
+__pycache__/
+.uvicorn.sock
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+.~*
+
+# IDE temporary files
+*.sublime-project
+*.sublime-workspace
+
+# Cursor editor
+.cursor/
+cursor.workspace
+
+# SustainCluster outputs (if any)
+sustain-cluster/checkpoints/outputs/
+sustain-cluster/logs/
+sustain-cluster/data/temp/
+
+# Task scheduler outputs
+task_scheduler_outputs/
+
+# macOS
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+.nfs*
