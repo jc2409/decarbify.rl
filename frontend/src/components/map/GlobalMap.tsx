@@ -199,8 +199,8 @@ export default function GlobalMap({ stepData, activeDcId }: Props) {
         <div
           style={{
             position: "absolute",
-            bottom: 12,
-            right: 12,
+            bottom: 70,
+            left: 12,
             zIndex: 20,
             pointerEvents: "none",
           }}

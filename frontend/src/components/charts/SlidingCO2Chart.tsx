@@ -89,7 +89,7 @@ export default function SlidingCO2Chart({
         height: CHART_HEIGHT,
         uirevision: "lock",
         // t: 48 gives the legend row + title enough room above the plot area
-        margin: { t: 48, b: 32, l: 52, r: 16 },
+        margin: { t: 48, b: 40, l: 50, r: 16 },
         legend: {
           orientation: "h" as const,
           // y > 1 + yanchor "bottom" places the legend above the plot area
@@ -117,10 +117,10 @@ export default function SlidingCO2Chart({
         title: {
           text: "CO2 Emissions",
           font: { color: "#4b5563", size: 10, family: "Roboto Mono, monospace" },
-          x: 0.01,
-          xanchor: "left" as const,
-          yanchor: "top" as const,
-          y: 0.99,
+          x: 0.518,
+          xanchor: "center" as const,
+          yanchor: "bottom" as const,
+          y: 1.5,
         },
       }}
       config={{ ...PLOTLY_CONFIG, responsive: true }}
