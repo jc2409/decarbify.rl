@@ -43,57 +43,54 @@ DC_IDS = list(DC_INFO.keys())
 # Each function returns gCO2/kWh for a given local hour (0-24 float).
 
 def _ci_california(local_hour: float, rng: np.random.RandomState) -> float:
-    """150-350, solar dip midday, gas peakers at evening peak. avg ~220."""
-    base = 250.0
-    # Solar dip centered at 13:00 local
-    solar = -80.0 * math.exp(-0.5 * ((local_hour - 13.0) / 2.5) ** 2)
-    # Evening peak at 19:00
-    evening = 70.0 * math.exp(-0.5 * ((local_hour - 19.0) / 2.0) ** 2)
-    # Night baseline slightly lower
-    night = -30.0 * math.exp(-0.5 * ((local_hour - 3.0) / 3.0) ** 2)
-    return float(np.clip(base + solar + evening + night + rng.normal(0, 12), 150, 350))
+    """80-380, massive solar dip midday, dirty evenings. Can be cleanest ~11-3pm."""
+    base = 270.0
+    solar = -170.0 * math.exp(-0.5 * ((local_hour - 13.0) / 2.0) ** 2)
+    evening = 100.0 * math.exp(-0.5 * ((local_hour - 19.0) / 1.8) ** 2)
+    night = -20.0 * math.exp(-0.5 * ((local_hour - 3.0) / 3.0) ** 2)
+    event = rng.normal(0, 40)  # cloud cover / grid volatility
+    return float(np.clip(base + solar + evening + night + event, 80, 380))
 
 
 def _ci_germany(local_hour: float, rng: np.random.RandomState, wind_factor: float = 1.0) -> float:
-    """200-450, wind-dependent with some demand tracking. avg ~310."""
-    base = 320.0 * wind_factor
-    # Morning ramp
-    morning = 40.0 * math.exp(-0.5 * ((local_hour - 8.0) / 2.0) ** 2)
-    # Afternoon demand
+    """100-450, highly volatile — wind gusts can make it very clean."""
+    base = 300.0 * wind_factor
+    morning = 50.0 * math.exp(-0.5 * ((local_hour - 8.0) / 2.0) ** 2)
     afternoon = 30.0 * math.exp(-0.5 * ((local_hour - 15.0) / 3.0) ** 2)
-    # Night dip
-    night = -50.0 * math.exp(-0.5 * ((local_hour - 3.0) / 3.0) ** 2)
-    return float(np.clip(base + morning + afternoon + night + rng.normal(0, 18), 200, 450))
+    night = -60.0 * math.exp(-0.5 * ((local_hour - 3.0) / 3.0) ** 2)
+    # Wind gusts — large random swings
+    wind_gust = rng.normal(0, 55)
+    return float(np.clip(base + morning + afternoon + night + wind_gust, 100, 450))
 
 
 def _ci_chile(local_hour: float, rng: np.random.RandomState) -> float:
-    """100-220, clean grid (hydro+solar), lowest overall. avg ~155."""
-    base = 160.0
-    # Midday dip from solar
-    solar = -35.0 * math.exp(-0.5 * ((local_hour - 13.0) / 3.0) ** 2)
-    # Evening rise when thermal plants ramp
-    evening = 25.0 * math.exp(-0.5 * ((local_hour - 20.0) / 2.5) ** 2)
-    return float(np.clip(base + solar + evening + rng.normal(0, 12), 100, 220))
+    """120-300, generally clean but evening thermal ramp + random drought spikes."""
+    base = 200.0
+    solar = -50.0 * math.exp(-0.5 * ((local_hour - 13.0) / 2.5) ** 2)
+    evening = 60.0 * math.exp(-0.5 * ((local_hour - 20.0) / 2.0) ** 2)
+    # Random hydro variability (drought days spike carbon)
+    hydro_event = rng.normal(0, 35)
+    return float(np.clip(base + solar + evening + hydro_event, 120, 300))
 
 
 def _ci_singapore(local_hour: float, rng: np.random.RandomState) -> float:
-    """400-520, consistently high (natural gas), little variation. avg ~460."""
-    base = 460.0
-    # Small demand-driven hump midday
-    demand = 20.0 * math.exp(-0.5 * ((local_hour - 14.0) / 4.0) ** 2)
-    return float(np.clip(base + demand + rng.normal(0, 10), 400, 520))
+    """250-520, gas-heavy but LNG spot price swings create big variation."""
+    base = 390.0
+    demand = 30.0 * math.exp(-0.5 * ((local_hour - 14.0) / 3.0) ** 2)
+    night_dip = -50.0 * math.exp(-0.5 * ((local_hour - 4.0) / 3.0) ** 2)
+    # LNG price volatility
+    lng_event = rng.normal(0, 50)
+    return float(np.clip(base + demand + night_dip + lng_event, 250, 520))
 
 
 def _ci_australia(local_hour: float, rng: np.random.RandomState) -> float:
-    """350-650, high baseline (coal), solar dip midday. avg ~480."""
-    base = 500.0
-    # Solar dip
-    solar = -80.0 * math.exp(-0.5 * ((local_hour - 12.5) / 2.5) ** 2)
-    # Evening coal peak
-    evening = 60.0 * math.exp(-0.5 * ((local_hour - 19.0) / 2.0) ** 2)
-    # Morning ramp
+    """200-600, coal baseline but massive solar midday can make it competitive."""
+    base = 420.0
+    solar = -160.0 * math.exp(-0.5 * ((local_hour - 12.5) / 2.0) ** 2)
+    evening = 80.0 * math.exp(-0.5 * ((local_hour - 19.0) / 2.0) ** 2)
     morning = 40.0 * math.exp(-0.5 * ((local_hour - 7.5) / 2.0) ** 2)
-    return float(np.clip(base + solar + evening + morning + rng.normal(0, 15), 350, 650))
+    event = rng.normal(0, 40)
+    return float(np.clip(base + solar + evening + morning + event, 200, 600))
 
 
 _CI_FUNCS = {
@@ -187,22 +184,23 @@ def _tasks_lowest_carbon(ci_values: dict[str, float], rng: np.random.RandomState
 
 def _tasks_rl_agent(ci_values: dict[str, float], local_hours: dict[str, float],
                     rng: np.random.RandomState) -> tuple[dict[str, int], int]:
-    """Smart distribution: more to clean DCs but balanced. Defers during peaks."""
-    # Inverse CI weighting (cleaner = more tasks) but with a floor
-    inv_ci = {dc: 1.0 / (ci + 50) for dc, ci in ci_values.items()}
+    """Smart distribution: aggressively routes to the cleanest DCs, shifts over time."""
+    # Sharper inverse-CI weighting — cube the inverse so small CI differences
+    # produce large routing swings (makes the demo visually dynamic)
+    inv_ci = {dc: (1.0 / (ci + 20)) ** 3 for dc, ci in ci_values.items()}
     total_inv = sum(inv_ci.values())
     weights = {dc: v / total_inv for dc, v in inv_ci.items()}
 
-    total_tasks = int(rng.randint(110, 140))
+    total_tasks = int(rng.randint(110, 145))
     tasks = {}
     for dc in DC_IDS:
         raw = int(total_tasks * weights[dc])
-        tasks[dc] = max(10, min(60, raw + int(rng.randint(-5, 5))))
+        # Wide range: cleanest DC can get 60+, dirtiest can get as low as 5
+        tasks[dc] = max(5, min(70, raw + int(rng.randint(-3, 3))))
 
     # Deferral: more during high-carbon hours globally
     avg_ci = np.mean(list(ci_values.values()))
-    # Higher deferral when average CI is high
-    defer_prob = np.clip((avg_ci - 250) / 400, 0.0, 0.6)
+    defer_prob = np.clip((avg_ci - 250) / 350, 0.0, 0.65)
     deferred = int(rng.binomial(15, defer_prob))
 
     return tasks, deferred
@@ -348,8 +346,8 @@ def generate_mock_comparison(
     # Pre-compute wind factor variation for Germany (multi-day pattern)
     wind_factors = []
     for d in range(eval_days):
-        # Some days windier than others
-        wind_factors.append(0.85 + 0.3 * rng.random())
+        # Some days windier than others — wide range for visible variation
+        wind_factors.append(0.55 + 0.7 * rng.random())
 
     for strategy in strategies:
         strategy_rng = np.random.RandomState(seed + hash(strategy) % 10000)

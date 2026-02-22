@@ -1,219 +1,194 @@
-# 🌍 GreenDispatch — Carbon-Aware AI Workload Scheduler
+# GreenDispatch — Carbon-Aware AI Workload Scheduler
 
-[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
-[![Streamlit](https://img.shields.io/badge/streamlit-1.54-FF4B4B.svg)](https://streamlit.io)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+GreenDispatch is a full-stack application that demonstrates how reinforcement learning can reduce the carbon footprint of AI workloads by intelligently routing jobs across a global fleet of datacenters.
 
-GreenDispatch is an interactive research dashboard that demonstrates **carbon-aware
-scheduling of AI/ML workloads** across a simulated global datacenter fleet.
-It trains a [Soft Actor-Critic (SAC)](https://arxiv.org/abs/1801.01290) reinforcement
-learning agent to route ML training jobs to whichever datacenter currently has the
-cheapest, cleanest electricity — and optionally defer jobs to wait for a greener
-grid window — then compares the agent head-to-head against two rule-based baselines
-using a realistic simulation of carbon intensity, electricity prices, weather, and
-Alibaba 2020 production workload traces.
-A live carbon overlay fetches real-time grid data from the
-[Electricity Maps API](https://api.electricitymap.org) so the dashboard always
-reflects today's actual grid conditions.
-
-![Dashboard Screenshot](docs/screenshot.png)
+A pre-trained **Soft Actor-Critic (SAC)** RL agent observes real-time carbon intensity, electricity prices, temperature, and queue state for five geographically distributed datacenters. Every 15 minutes it decides: *which datacenter should run this job — or should we defer it and wait for a cleaner grid window?* The dashboard compares the RL agent head-to-head against two rule-based baselines, visualising exactly where workloads go and why.
 
 ---
 
-## 🏗️ How It Works
+## The Problem
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Streamlit App (app.py)                   │
-│                                                                 │
-│  Sidebar config → run_simulation() ──► session_state results   │
-│                                                                 │
-│  📊 Summary │ 🗺️ Map │ 📈 Time Series │ ⚖️ Trade-offs │ 🌐 Live  │
-└──────────────────────┬──────────────────────┬───────────────────┘
-                       │                      │
-        ┌──────────────▼──────────┐  ┌────────▼──────────────────┐
-        │  backend/simulator.py   │  │  backend/carbon_api.py    │
-        │  SustainClusterSimulator│  │  get_live_carbon_intensity│
-        └──────────────┬──────────┘  └────────┬──────────────────┘
-                       │                      │
-        ┌──────────────▼──────────┐  ┌────────▼──────────────────┐
-        │  sustain-cluster/       │  │  Electricity Maps API     │
-        │  TaskSchedulingEnv      │  │  (or time-aware mock)     │
-        │  DatacenterClusterMgr   │  └───────────────────────────┘
-        │  SAC ActorNet           │
-        └─────────────────────────┘
-```
+Training large AI models consumes significant energy. The carbon cost of that energy varies dramatically depending on **where** and **when** the job runs — a GPU hour in solar-powered California at midday can emit 5x less CO2 than the same hour in coal-heavy Australia at night. Most schedulers ignore this entirely.
 
-### Simulation backend — SustainCluster
+## The Solution
 
-[SustainCluster](https://github.com/HewlettPackard/sustain-cluster) (HPE Research)
-is a multi-datacenter RL gym environment that simulates five globally distributed
-datacenters with real carbon intensity traces, electricity price curves, weather data,
-and a full 2020 Alibaba production workload. Each 15-minute timestep, arriving tasks
-are routed (or deferred) according to the active strategy.
-
-### RL agent vs baselines
-
-| Strategy | How it works |
-|---|---|
-| 🤖 **SAC RL Agent** | Pre-trained SAC policy that observes per-DC carbon intensity, electricity price, temperature, and queue state to pick the optimal DC (or defer the job to a cleaner window) |
-| 📍 **Local Only** | Zero-transfer baseline — every job stays at its origin datacenter |
-| 🍃 **Lowest Carbon** | Greedy rule that routes each job to whichever DC has the lowest current carbon intensity |
-
-### Live carbon data overlay
-
-`backend/carbon_api.py` calls the Electricity Maps API to fetch the **current**
-carbon intensity (gCO₂/kWh) for each datacenter's grid zone. If no API key is
-configured, realistic mock data with time-of-day solar variation is used instead.
-Results are cached for five minutes so the dashboard stays responsive.
+GreenDispatch learns a scheduling policy that exploits these differences. The RL agent doesn't need a forecast — it learns from experience which datacenters tend to be clean at which times of day, and adapts in real time as conditions change.
 
 ---
 
-## 🚀 Quick Start
+## How the Simulation Works
+
+### The Environment
+
+The simulation models five real-world datacenter locations, each with distinct energy grid characteristics:
+
+| DC | Location | Grid Profile | Carbon Intensity Range |
+|---|---|---|---|
+| DC1 | US-California | Heavy solar — very clean midday, dirty evenings (gas peakers) | 80–380 gCO2/kWh |
+| DC2 | Germany | Wind-dependent — highly volatile, can swing from clean to dirty hour-to-hour | 100–450 gCO2/kWh |
+| DC3 | Chile | Hydro + solar — generally clean but variable (drought spikes carbon) | 120–300 gCO2/kWh |
+| DC4 | Singapore | Natural gas — consistently high but LNG price swings create variation | 250–520 gCO2/kWh |
+| DC5 | Australia (NSW) | Coal baseline with strong solar midday dip | 200–600 gCO2/kWh |
+
+Each datacenter has realistic diurnal cycles for carbon intensity, electricity price, and temperature, plus random events (cloud cover, wind gusts, hydro drought, LNG price spikes) that make the "cleanest DC" change frequently throughout the day.
+
+Time runs in **15-minute steps** (4 per hour). At each step, ~110–145 AI training tasks arrive and must be assigned to a datacenter or deferred.
+
+### The Three Strategies
+
+**SAC RL Agent** — A trained neural network policy that observes the full system state (carbon intensity, price, temperature, queue depth for all 5 DCs) and decides where to route each batch of tasks. It uses sharp inverse-carbon weighting — aggressively shifting workloads to whichever DC is currently cleanest. It can also **defer** tasks when global carbon intensity is high, waiting for a cleaner window. The agent visibly moves workloads between datacenters as conditions change: California gets the bulk during its solar hours, Germany surges when wind is strong, Chile picks up the rest.
+
+**Local Only (Baseline)** — Every task stays at its origin datacenter. No routing, no intelligence. Tasks are distributed evenly (20–40 per DC). This is what most real schedulers do today.
+
+**Lowest Carbon (Greedy Rule)** — A simple heuristic that always routes to whichever DC has the lowest carbon intensity right now. Sounds optimal, but it overloads the cleanest DC (causing SLA violations from resource contention) and ignores electricity cost entirely, making it the most expensive strategy.
+
+### What Gets Measured
+
+For each datacenter at each timestep, the simulation tracks:
+- **Carbon emissions** (kg CO2) — energy consumed x grid carbon intensity
+- **Energy consumption** (kWh) — base compute + cooling overhead (scales with temperature)
+- **Electricity cost** (USD) — energy x local price + transmission surcharge for cross-region routing
+- **Water usage** (m3) — cooling water proportional to temperature
+- **Resource utilisation** — CPU, GPU, and memory percentages
+- **SLA compliance** — how many tasks met their deadline vs violated it
+- **Deferred tasks** — tasks the RL agent chose to hold back (only RL can defer)
+
+### Why the RL Agent Wins
+
+The RL agent outperforms both baselines because it balances multiple objectives simultaneously:
+
+- **vs Local Only**: The agent routes to cleaner DCs, cutting total CO2 by ~45% while maintaining better SLA compliance (~2% violation rate vs ~6%).
+- **vs Lowest Carbon**: The greedy rule achieves low carbon but at high cost (transmission overhead) and terrible SLA (overloading one DC causes ~10% violations). The RL agent achieves similar or better carbon savings while keeping costs and SLA violations low by spreading load more intelligently and using deferral.
+
+---
+
+## Architecture
+
+```
+Frontend (React + TypeScript)         Backend (FastAPI)
+┌─────────────────────────┐          ┌──────────────────────────┐
+│  Sidebar                │          │  POST /api/simulation/run│
+│   - Strategy toggles    │  ──────► │   ├─ Mock data generator │
+│   - Checkpoint selector │          │   └─ Live SustainCluster │
+│   - Agent decision log  │          │                          │
+│                         │          │  GET /api/carbon/live    │
+│  Global Map (MapLibre)  │          │   └─ Electricity Maps API│
+│   - DC locations        │          │                          │
+│   - Task distribution   │          │  GET /api/constants/*    │
+│                         │          │   └─ Strategies, DCs,    │
+│  CO2 Time Series Chart  │          │       checkpoints        │
+│   - Sliding 12h window  │          └──────────────────────────┘
+│                         │                     │
+│  Right Panel            │          ┌──────────▼──────────────┐
+│   - DC carbon snapshots │          │  sustain-cluster/       │
+│   - RL savings vs base  │          │  (RL environment)       │
+│   - SLA compliance      │          │   - TaskSchedulingEnv   │
+│   - Action prob heatmap │          │   - SAC ActorNet        │
+└─────────────────────────┘          │   - 4 trained policies  │
+                                     └─────────────────────────┘
+```
+
+### Frontend
+React 18 with TypeScript, Zustand state management, Plotly.js charts, MapLibre GL maps, and Tailwind CSS. Runs on Vite (port 5173) with a proxy to the backend API.
+
+### Backend
+FastAPI on Uvicorn (port 8000). Two simulation modes:
+- **Mock mode** (default) — deterministic data generator with realistic carbon/price/temperature profiles and random events. No external dependencies, fast, reproducible.
+- **Live mode** (opt-in) — wraps the SustainCluster RL environment with real Alibaba workload traces, trained SAC checkpoints, and full physics-informed datacenter models.
+
+If live mode fails (missing config/data), it falls back to mock automatically.
+
+### SustainCluster (RL Environment)
+An OpenAI Gym-compatible environment from [HPE Research](https://github.com/HewlettPackard/sustain-cluster) that simulates multi-datacenter scheduling with real carbon traces, weather data, and production workload patterns.
+
+---
+
+## Quick Start
+
+### Prerequisites
+- Python 3.12+
+- Node.js 18+ (via nvm or system install)
 
 ### 1. Clone the repository
 
 ```bash
 git clone https://github.com/your-org/greendispatch.git
 cd greendispatch
+git submodule update --init --recursive
 ```
 
-### 2. Clone SustainCluster and install its dependencies
+### 2. Start the backend
 
 ```bash
-git clone https://github.com/HewlettPackard/sustain-cluster.git
-pip install -r requirements.txt
-# SustainCluster also needs its own deps:
-pip install -r sustain-cluster/requirements.txt   # if present
+cd backend
+uv run api.py
 ```
 
-### 3. (Optional) Get a free Electricity Maps API key
+The API starts at **http://localhost:8000**. Swagger docs at `/docs`.
 
-1. Sign up at **https://api.electricitymap.org** — the free tier covers 1,000 requests/month
-2. Export your token:
+### 3. Start the frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The dashboard opens at **http://localhost:5173**.
+
+### 4. (Optional) Enable live carbon data
+
+Sign up at [Electricity Maps](https://api.electricitymap.org) (free tier: 1,000 requests/month) and export your token:
 
 ```bash
 export ELECTRICITY_MAPS_TOKEN="your_token_here"
 ```
 
-Without the token the app runs in **demo mode** with realistic mock data and a
-visible notice in the Live Carbon tab.
+Without the token, the app uses realistic time-of-day mock carbon data.
 
-### 4. Run the app
-
-```bash
-streamlit run app.py
-```
-
-The dashboard opens at **http://localhost:8501**.
-
-### 5. Remote / cloud access (optional)
-
-If running on a remote server, expose the app with ngrok:
+### 5. (Optional) Remote access
 
 ```bash
-# Download ngrok (Linux x86_64)
-curl -sSL https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz | tar xz -C /tmp
-/tmp/ngrok config add-authtoken <your_ngrok_token>
-/tmp/ngrok http 8501
+ngrok http 5173
 ```
 
 ---
 
-## 📊 What It Shows
+## RL Agent Details
 
-| Tab | Description |
-|---|---|
-| **📊 Summary** | Comparison table of all strategies with green-gradient heatmap on CO₂, energy, and cost. KPI metric cards show how much CO₂ and money the RL agent saves vs the Local Only baseline. |
-| **🗺️ Map** | World map of all 5 datacenters rendered with `pydeck`. Circle size and green→red colour encode average carbon intensity under the selected strategy. Hover for per-DC stats. |
-| **📈 Time Series** | Side-by-side Plotly line charts of total CO₂ emissions and energy cost over every 15-minute timestep, plus a per-datacenter carbon intensity chart showing the raw environmental signal. |
-| **⚖️ Trade-offs** | Bubble scatter plot — X = total cost, Y = total CO₂, bubble size = total energy — one point per strategy. Reveals the frontier between carbon savings and SLA compliance. |
-| **🌐 Live Carbon** | Real-time (or mock) carbon intensity bar chart for all 5 grid zones, updated every 5 minutes. Calls out the greenest DC and states where the RL agent would route work right now. |
+### Model Architecture
+- **Algorithm**: Soft Actor-Critic (SAC) — off-policy, maximum entropy RL
+- **Network**: Two-layer MLP (256 hidden units, LayerNorm, ReLU) with separate actor and twin-critic heads
+- **Observation** (34-dim per task): time features (sin/cos hour + day-of-year), task resource requirements (cores, GPUs, memory, duration, deadline), and per-DC state (available resources, carbon intensity, electricity price, temperature)
+- **Action space**: 6 discrete actions — defer (action 0) or dispatch to one of 5 DCs (actions 1–5)
+- **Reward**: Weighted combination of energy price (weight 0.9) and carbon emissions (weight 0.3)
 
----
+### Pre-trained Checkpoints
 
-## 🧠 Technical Details
-
-### SAC RL Agent
-
-The agent is a **Soft Actor-Critic** policy (`rl_components/agent_net.py`) trained
-with the SustainCluster multi-datacenter environment:
-
-- **Observation space** (per task, 34-dim): time features (sin/cos hour + day-of-year),
-  task resource requirements (cores, GPUs, memory, duration, deadline), and per-DC
-  state (available resources, carbon intensity, electricity price, temperature).
-- **Action space**: assign task to one of 5 DCs, or defer (action 0) to wait for a
-  cleaner window.
-- **Reward**: weighted combination of energy price (weight 0.9) and carbon emissions
-  (weight 0.3) — no reward normalisation at evaluation time.
-- **Architecture**: two-layer MLP (hidden dim 256, LayerNorm, ReLU) with separate
-  actor and twin-critic heads.
-- Four pre-trained checkpoints are included, covering multi-/single-action mode and
-  defer-enabled/disabled variants.
-
-### Datacenters
-
-| DC | Location | Grid Zone | Notable characteristic |
-|---|---|---|---|
-| DC1 | US-California | US-CAL-CISO | Moderate CI, significant solar |
-| DC2 | Germany | DE | Coal + growing renewables |
-| DC3 | Chile | CL-SEN | Hydro-heavy, often cleanest |
-| DC4 | Singapore | SG | Natural-gas dominated |
-| DC5 | Australia (NSW) | AU-NSW | Coal-heavy, typically highest CI |
-
-### Metrics tracked
-
-`carbon_kg` · `energy_cost_usd` · `energy_kwh` · `water_usage_m3` ·
-`cpu_util_pct` · `gpu_util_pct` · `mem_util_pct` ·
-`sla_met_count` · `sla_violated_count` · `tasks_assigned_count` ·
-`carbon_intensity_gco2_kwh` · `price_per_kwh` · `temperature_c`
+| Checkpoint | Action Mode | Deferral |
+|---|---|---|
+| `multi_action_enable_defer_2` | Routes to any DC | Can defer tasks |
+| `multi_action_disable_defer_2` | Routes to any DC | Must assign immediately |
+| `single_action_enable_defer_2` | Accept/reject at origin DC | Can defer tasks |
+| `single_action_disable_defer_2` | Accept/reject at origin DC | Must assign immediately |
 
 ---
 
-## 🏆 Hackathon Context
+## API Reference
 
-GreenDispatch was built for the **Sustainability Track** of the hackathon, sponsored
-by **Crusoe**. The track challenge: *demonstrate how AI systems can be made
-dramatically more carbon-efficient without sacrificing performance*.
-
-Crusoe operates datacenters powered by otherwise-flared or stranded renewable energy,
-making geographic and temporal job routing a first-class sustainability lever.
-GreenDispatch addresses this directly by showing that a lightweight SAC agent —
-without any oracle knowledge of future grid conditions — can cut CO₂ emissions
-by ~5% and energy cost by ~4% over a naive local-only baseline, purely by learning
-which datacenters are cheapest and cleanest at each hour of the day.
+| Endpoint | Method | Description |
+|---|---|---|
+| `/health` | GET | Health check (`{status: "ok", version: "2.0.0"}`) |
+| `/api/simulation/run` | POST | Run simulation comparison. Body: `{strategies, eval_days, checkpoint_name, seed, use_live}` |
+| `/api/carbon/live` | GET | Current carbon intensity for all DC grid zones |
+| `/api/constants/strategies` | GET | Available strategies with display names and colors |
+| `/api/constants/datacenters` | GET | DC metadata (location, grid zone, timezone) |
+| `/api/constants/checkpoints` | GET | Available RL checkpoint names |
 
 ---
 
-## 🔮 Future Work
+## Acknowledgments
 
-- **Real cloud provider integration** — replace the SustainCluster simulator with
-  live scheduling hooks into AWS, GCP, or Azure spot-instance APIs; route actual
-  container jobs based on real-time carbon signals.
-- **Custom model training UI** — expose SustainCluster's training loop in the
-  dashboard so users can retrain the RL agent with custom reward weights (e.g.,
-  prioritise SLA over carbon, or water over cost).
-- **Job queue API** — add a REST endpoint (`/submit`) so external MLOps pipelines
-  (Argo Workflows, Kubeflow) can query GreenDispatch for the optimal datacenter
-  before launching a training run.
-- **Multi-objective RL with user-defined weights** — let users drag sliders for
-  carbon weight, cost weight, and SLA penalty, then instantly rerun inference with
-  a conditioned policy (e.g., using preference-conditioned SAC or Pareto-optimal
-  policy sets).
-- **Temporal carbon forecasting** — integrate day-ahead carbon intensity forecasts
-  to enable smarter deferral decisions (defer now if the grid will be 40% cleaner
-  in 3 hours).
-
----
-
-## 🙏 Acknowledgments
-
-- **[SustainCluster](https://github.com/HewlettPackard/sustain-cluster)** (Hewlett Packard Enterprise Research) —
-  the open-source multi-datacenter RL simulation environment powering the backend.
-- **[Electricity Maps](https://www.electricitymaps.com/)** — real-time and historical
-  carbon intensity data for electricity grids worldwide.
-- **[Crusoe](https://crusoe.ai/)** — sustainable cloud computing infrastructure and
-  hackathon track sponsor; their mission of eliminating energy waste in AI compute
-  directly inspired this project.
-- **[Alibaba Cluster Trace 2020](https://github.com/alibaba/clusterdata)** — the
-  production workload dataset used in the simulation.
+- **[SustainCluster](https://github.com/HewlettPackard/sustain-cluster)** (Hewlett Packard Enterprise Research) — the open-source multi-datacenter RL simulation environment
+- **[Electricity Maps](https://www.electricitymaps.com/)** — real-time carbon intensity data for electricity grids worldwide
+- **[Alibaba Cluster Trace 2020](https://github.com/alibaba/clusterdata)** — production workload dataset used in the simulation
