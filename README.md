@@ -1,6 +1,7 @@
 # decarbify.rl — rl-driven carbon-aware workload scheduler
 
-[demo video](media/demo.mp4)
+[![Watch the demo](https://img.youtube.com/vi/HSAqj3pCskQ/maxresdefault.jpg)](https://youtu.be/HSAqj3pCskQ)
+
 
 decarbify.rl is a full-stack application that demonstrates how reinforcement learning can reduce the carbon footprint of AI workloads by intelligently routing jobs across a global fleet of datacenters.
 
