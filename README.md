@@ -112,8 +112,8 @@ An OpenAI Gym-compatible environment from [HPE Research](https://github.com/Hewl
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-org/greendispatch.git
-cd greendispatch
+git clone https://github.com/your-org/greendispatch.git](https://github.com/jc2409/decarbify.rl.git
+cd decarbify.rl
 git submodule update --init --recursive
 ```
 
