@@ -26,7 +26,7 @@ function buildStepMap(rows: PerDcRow[], ctrl: string): Map<number, number> {
   return m;
 }
 
-const CHART_HEIGHT = 180;
+const CHART_HEIGHT = 200;
 
 export default function SlidingCO2Chart({
   allPerDc,

@@ -125,7 +125,7 @@ export default function App() {
           {/* Chart strip — fixed height, never shrinks */}
           <div
             className="glass-card shrink-0 overflow-hidden"
-            style={{ height: "180px" }}
+            style={{ height: "200px", paddingBottom: "12px" }}
           >
             {results ? (
               <SlidingCO2Chart

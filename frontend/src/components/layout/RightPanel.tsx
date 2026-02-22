@@ -197,11 +197,6 @@ export default function RightPanel({
 
         {/* Spacer */}
         <div className="flex-1" />
-
-        {/* ── Micro footer ──────────────────────────────────────── */}
-        <div className="micro-label text-center opacity-25 pt-2">
-          step {playbackStep}/{maxStep}
-        </div>
       </div>
     </aside>
   );
