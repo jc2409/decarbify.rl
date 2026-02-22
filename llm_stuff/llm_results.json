@@ -1,0 +1,29 @@
+[
+  {
+    "strategy": "local_only",
+    "total_tasks": 2690,
+    "energy_kwh": 5346.739,
+    "carbon_kg": 1194.627,
+    "cost_usd": 641.6087,
+    "sla_violations": 0,
+    "sla_viol_pct": 0.0
+  },
+  {
+    "strategy": "lowest_carbon",
+    "total_tasks": 2690,
+    "energy_kwh": 5346.739,
+    "carbon_kg": 1023.626,
+    "cost_usd": 427.7391,
+    "sla_violations": 0,
+    "sla_viol_pct": 0.0
+  },
+  {
+    "strategy": "llm",
+    "total_tasks": 2690,
+    "energy_kwh": 5346.739,
+    "carbon_kg": 1154.255,
+    "cost_usd": 536.6488,
+    "sla_violations": 0,
+    "sla_viol_pct": 0.0
+  }
+]

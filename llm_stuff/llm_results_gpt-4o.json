@@ -1,0 +1,10 @@
+{
+  "strategy": "llm",
+  "model": "gpt-4o",
+  "total_tasks": 2690,
+  "energy_kwh": 5346.739,
+  "carbon_kg": 1024.747,
+  "cost_usd": 428.7895,
+  "sla_violations": 0,
+  "sla_viol_pct": 0.0
+}

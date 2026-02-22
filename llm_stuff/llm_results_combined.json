@@ -1,0 +1,42 @@
+[
+  {
+    "strategy": "local_only",
+    "model": null,
+    "total_tasks": 2690,
+    "energy_kwh": 5346.739,
+    "carbon_kg": 1194.627,
+    "cost_usd": 641.6087,
+    "sla_violations": 0,
+    "sla_viol_pct": 0.0
+  },
+  {
+    "strategy": "lowest_carbon",
+    "model": null,
+    "total_tasks": 2690,
+    "energy_kwh": 5346.739,
+    "carbon_kg": 1023.626,
+    "cost_usd": 427.7391,
+    "sla_violations": 0,
+    "sla_viol_pct": 0.0
+  },
+  {
+    "strategy": "llm",
+    "model": "gpt-4o-mini",
+    "total_tasks": 2690,
+    "energy_kwh": 5346.739,
+    "carbon_kg": 1112.256,
+    "cost_usd": 528.0617,
+    "sla_violations": 0,
+    "sla_viol_pct": 0.0
+  },
+  {
+    "strategy": "llm",
+    "model": "gpt-4o",
+    "total_tasks": 2690,
+    "energy_kwh": 5346.739,
+    "carbon_kg": 1024.747,
+    "cost_usd": 428.7895,
+    "sla_violations": 0,
+    "sla_viol_pct": 0.0
+  }
+]
