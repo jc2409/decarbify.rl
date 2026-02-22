@@ -156,7 +156,7 @@ export default function RightPanel({
             <StatLine
               label="Tasks Deferred"
               value={fmtNum(savings.totalDeferred, 0)}
-              color="#00D4FF"
+              color="#00FF9F"
             />
 
             <Divider />
