@@ -58,11 +58,18 @@ interface SimState {
 
 // ── Helper to determine useLive based on environment ────────────────────────
 const getDefaultUseLive = (): boolean => {
-  // In test environment, use mock mode (live = false)
+  // Check for explicit env variable first (from .env.mock or .env.development)
+  const envValue = import.meta.env.VITE_USE_LIVE;
+  if (envValue !== undefined) {
+    return envValue === 'true';
+  }
+  
+  // Fall back to mode detection for test environment
   if (import.meta.env.MODE === 'test') {
     return false;
   }
-  // In development/production, use live mode (live = true)
+  
+  // Default: live mode for development/production
   return true;
 };
 

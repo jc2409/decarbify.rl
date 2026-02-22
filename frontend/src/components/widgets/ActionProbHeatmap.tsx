@@ -3,12 +3,12 @@
  * probability distribution at the current timestep.
  *
  * Action index mapping (5-DC + defer enabled checkpoint):
- *   0        = DEFER
- *   1 – n-1  = DISPATCH to DC1…DCn
- *   (no separate migrate in current env — routing to a distant DC is migration)
- *
- * We aggregate DC dispatch probs into a single "DISPATCH" bar so the chart
- * stays readable regardless of how many DCs the checkpoint was trained on.
+ *   0   = DEFER
+ *   1   = DC1 (US-California)
+ *   2   = DC2 (Germany)
+ *   3   = DC3 (Chile)
+ *   4   = DC4 (Singapore)
+ *   5   = DC5 (Australia)
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -17,37 +17,25 @@ interface Props {
   actionProbs: number[];
 }
 
-// ── Action grouping ────────────────────────────────────────────────────────
-interface ActionGroup {
+// ── Per-action metadata ────────────────────────────────────────────────────
+
+interface ActionMeta {
   label: string;
   sublabel: string;
-  prob: number;
   color: string;
 }
 
-function groupProbs(probs: number[]): ActionGroup[] {
-  if (probs.length === 0) return [];
+const ACTION_META: ActionMeta[] = [
+  { label: "DEFER", sublabel: "wait",  color: "#FBBF24" },
+  { label: "DC1",   sublabel: "US",    color: "#00FF9F" },
+  { label: "DC2",   sublabel: "DE",    color: "#00FF9F" },
+  { label: "DC3",   sublabel: "CL",    color: "#00FF9F" },
+  { label: "DC4",   sublabel: "SG",    color: "#00FF9F" },
+  { label: "DC5",   sublabel: "AU",    color: "#00FF9F" },
+];
 
-  const defer   = probs[0] ?? 0;
-  const dispatch = probs.length > 1 ? probs.slice(1).reduce((s, p) => s + p, 0) : 0;
+// ── Entropy ────────────────────────────────────────────────────────────────
 
-  return [
-    {
-      label: "DISPATCH",
-      sublabel: "route now",
-      prob: dispatch,
-      color: "#00FF9F",
-    },
-    {
-      label: "DEFER",
-      sublabel: "wait",
-      prob: defer,
-      color: "#FBBF24",
-    },
-  ];
-}
-
-// Entropy: H = -sum(p * log(p))  — max is log2(n) for n actions
 function entropy(probs: number[]): number {
   return -probs
     .filter((p) => p > 0)
@@ -57,9 +45,9 @@ function entropy(probs: number[]): number {
 function entropyLabel(h: number, nActions: number): { text: string; color: string } {
   const maxH = Math.log2(Math.max(nActions, 2));
   const ratio = h / maxH;
-  if (ratio < 0.35) return { text: "HIGH CONFIDENCE", color: "#00FF9F" };
-  if (ratio < 0.65) return { text: "MODERATE",        color: "#FBBF24" };
-  return                 { text: "UNCERTAIN",          color: "#F43F5E" };
+  if (ratio < 0.35) return { text: "CONFIDENT", color: "#00FF9F" };
+  if (ratio < 0.65) return { text: "MODERATE",  color: "#FBBF24" };
+  return                 { text: "UNCERTAIN",   color: "#F43F5E" };
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -77,8 +65,7 @@ export default function ActionProbHeatmap({ actionProbs }: Props) {
 
     const changed = new Set<number>();
     actionProbs.forEach((p, i) => {
-      const delta = Math.abs(p - (prevProbs.current[i] ?? 0));
-      if (delta > 0.05) changed.add(i);
+      if (Math.abs(p - (prevProbs.current[i] ?? 0)) > 0.05) changed.add(i);
     });
 
     if (changed.size > 0) {
@@ -90,22 +77,25 @@ export default function ActionProbHeatmap({ actionProbs }: Props) {
     prevProbs.current = actionProbs;
   }, [actionProbs]);
 
-  const groups = groupProbs(actionProbs);
   const hasData = actionProbs.length > 0;
   const h = entropy(actionProbs);
   const { text: entropyText, color: entropyColor } = entropyLabel(h, actionProbs.length);
-  const maxProb = Math.max(...groups.map((g) => g.prob), 0.01);
+  const maxProb = Math.max(...actionProbs, 0.01);
+  const maxIdx = actionProbs.indexOf(Math.max(...actionProbs));
 
   return (
     <div className="flex flex-col gap-2 pb-1">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="text-xs font-semibold tracking-wide" style={{ color: "#E6EDF3", fontSize: 13 }}>
+        <div
+          className="font-semibold tracking-wide text-white/80"
+          style={{ fontSize: 13 }}
+        >
           AGENT POLICY
         </div>
         {hasData && (
           <div
-            className="text-xs font-mono"
+            className="font-mono"
             style={{ color: entropyColor, fontSize: 9, letterSpacing: "0.08em" }}
           >
             {entropyText}
@@ -114,7 +104,6 @@ export default function ActionProbHeatmap({ actionProbs }: Props) {
       </div>
 
       {!hasData ? (
-        /* Placeholder — shows until live simulation runs */
         <div
           className="flex flex-col gap-1.5 items-center justify-center rounded"
           style={{
@@ -124,25 +113,24 @@ export default function ActionProbHeatmap({ actionProbs }: Props) {
           }}
         >
           <span style={{ color: "#8B949E", fontSize: 9, fontFamily: "Roboto Mono, monospace" }}>
-            REQUIRES LIVE SIMULATION
+            NO DATA YET
           </span>
           <span style={{ color: "#30363D", fontSize: 8, fontFamily: "Roboto Mono, monospace" }}>
-            enable live mode to see policy
+            awaiting simulation
           </span>
         </div>
       ) : (
         <>
           {/* Vertical bars */}
-          <div className="flex items-end gap-2" style={{ height: 72 }}>
-            {groups.map((g, i) => {
-              const heightPct = (g.prob / maxProb) * 100;
-              const isPrimary = g.prob === Math.max(...groups.map((x) => x.prob));
-              const isOldIndex = i < actionProbs.length;
-              const isPulsing = isOldIndex && pulsing.has(i);
+          <div className="flex items-end gap-1" style={{ height: 76 }}>
+            {actionProbs.map((prob, i) => {
+              const meta = ACTION_META[i] ?? { label: `A${i}`, sublabel: "", color: "#00FF9F" };
+              const heightPct = (prob / maxProb) * 100;
+              const isPrimary = i === maxIdx;
 
               return (
                 <div
-                  key={g.label}
+                  key={i}
                   className="flex flex-col items-center flex-1 gap-1"
                   style={{ height: "100%" }}
                 >
@@ -150,28 +138,26 @@ export default function ActionProbHeatmap({ actionProbs }: Props) {
                   <span
                     className="font-mono"
                     style={{
-                      fontSize: 9,
-                      color: isPrimary ? g.color : "#8B949E",
+                      fontSize: 8,
+                      color: isPrimary ? meta.color : "#8B949E",
                       transition: "color 300ms ease",
                     }}
                   >
-                    {(g.prob * 100).toFixed(0)}%
+                    {(prob * 100).toFixed(0)}%
                   </span>
 
                   {/* Bar track */}
                   <div
-                    className="flex-1 w-full flex flex-col justify-end rounded overflow-hidden"
+                    className="flex-1 w-full flex flex-col justify-end rounded-sm overflow-hidden"
                     style={{ background: "#30363D" }}
                   >
                     <div
                       style={{
                         height: `${heightPct}%`,
-                        background: isPrimary ? g.color : g.color + "55",
+                        background: isPrimary ? meta.color : meta.color + "44",
                         transition: "height 200ms ease-in-out, background 200ms ease",
-                        boxShadow: isPrimary
-                          ? `0 0 8px ${g.color}66`
-                          : "none",
-                        animation: isPulsing ? "bar-pulse 0.5s ease-out" : "none",
+                        boxShadow: isPrimary ? `0 0 6px ${meta.color}55` : "none",
+                        animation: pulsing.has(i) ? "bar-pulse 0.5s ease-out" : "none",
                       }}
                     />
                   </div>
@@ -181,40 +167,31 @@ export default function ActionProbHeatmap({ actionProbs }: Props) {
           </div>
 
           {/* Labels below bars */}
-          <div className="flex gap-2">
-            {groups.map((g) => (
-              <div key={g.label} className="flex flex-col items-center flex-1">
-                <span
-                  className="font-mono text-center"
-                  style={{ fontSize: 8, color: "#8B949E", letterSpacing: "0.06em" }}
-                >
-                  {g.label}
-                </span>
-                <span
-                  className="font-mono text-center"
-                  style={{ fontSize: 7, color: "#4b5563" }}
-                >
-                  {g.sublabel}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {/* Raw action probs (small detail row) */}
-          <div className="flex gap-1 flex-wrap mt-0.5">
-            {actionProbs.map((p, i) => (
-              <span
-                key={i}
-                className="font-mono"
-                style={{
-                  fontSize: 7,
-                  color: p === Math.max(...actionProbs) ? "#00FF9F" : "#30363D",
-                  transition: "color 200ms ease",
-                }}
-              >
-                a{i}:{(p * 100).toFixed(0)}
-              </span>
-            ))}
+          <div className="flex gap-1">
+            {actionProbs.map((_, i) => {
+              const meta = ACTION_META[i] ?? { label: `A${i}`, sublabel: "", color: "#00FF9F" };
+              const isPrimary = i === maxIdx;
+              return (
+                <div key={i} className="flex flex-col items-center flex-1">
+                  <span
+                    className="font-mono text-center"
+                    style={{
+                      fontSize: 7,
+                      color: isPrimary ? "#E6EDF3" : "#8B949E",
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    {meta.label}
+                  </span>
+                  <span
+                    className="font-mono text-center"
+                    style={{ fontSize: 6, color: "#4b5563" }}
+                  >
+                    {meta.sublabel}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </>
       )}
